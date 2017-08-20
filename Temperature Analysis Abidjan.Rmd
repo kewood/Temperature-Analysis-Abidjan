@@ -3,8 +3,8 @@ title: "Temperature Analysis Abidjan"
 author: "Karen Wood"
 date: "July 28, 2017"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,30 +13,34 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Climate Change Data Analysis
 
-In this code, I would like to first apply the time series method as described in otexts.org/fpp, specifically the Classical Decomposition method and look at the results.
+This is an example of fitting data with an ARIMA model and classical decomposition.
 
-First we will import our data:
+First import data:
 
 ```{r}
 library(readr)
-GlobalLandTemperaturesByMajorCity <- read_csv("C:/Users/Karen/Google Drive/Kaggle/Climate Change/climate-change-earth-surface-temperature-data/GlobalLandTemperaturesByMajorCity.csv")
+GlobalLandTemperaturesByMajorCity <- 
+  read_csv(paste0("C:/Users/Karen/Google Drive/Kaggle/Climate Change/",
+                 "climate-change-earth-surface-temperature-data/",
+                 "GlobalLandTemperaturesByMajorCity.csv"))
 ```
 
-The data I am using is from Kaggle, posted by Berkeley Earth. It was downloaded on July 28, 2017 at 3:25pm Pacific Time. In particular, I will examine the data from a single major city. The data appears to have temperatures in Celcius. Date format is in y-m-d format, but only 1 data point for each month, at least for the first city: Abidjan. 
+This data is from Kaggle, posted by Berkeley Earth. It was downloaded on July 28, 2017 at 3:25pm Pacific Time. In particular, I will examine the data from a single major city. The data appears to have temperatures in Celcius. Date format is in y-m-d format, but only 1 data point for each month, at least for the first city: Abidjan. 
 
-Let's first do one city. The first city: Abidjan.
+I will be focusing my analysis on the first city: Abidjan.
 
 ```{r}
-AbidjanData<-GlobalLandTemperaturesByMajorCity[GlobalLandTemperaturesByMajorCity$City=="Abidjan",]
+AbidjanData<-
+  GlobalLandTemperaturesByMajorCity[GlobalLandTemperaturesByMajorCity$City=="Abidjan", ]
 ```
 
-Now let's see if there's missing data.
+I will start by checking for missing data.
 
 ```{r}
 sum(is.na(AbidjanData$AverageTemperature))
 ```
 
-I got that there are 200 NAs. How will I deal with the missing data? Let's plot the data to see what the situation is. As it turns out, the dates are already in the format we would like.
+There are 200 NAs. I will first plot the data to see what the situation is. The dates are already in the format I would like to use to plot, so I do not need to change them.
 
 ```{r}
 library(ggplot2)
@@ -44,7 +48,7 @@ ggplot(AbidjanData, aes(dt,AverageTemperature))+geom_point(aes(color=AverageTemp
 ```
 
 
-It looks like much of the data missing is very old data. Let's restrict to just data more recent than 1900. Note that instead, we could use the forecast package and use tsclean() to input the missing values. However, with such large swaths of data missing, I think it better to restrict our data for now.
+Much of the data missing is very old data. I will restrict to just data more recent than 1900. Instead, I could use the forecast package and use tsclean() to input the missing values. However, with such large swaths of data missing, I think it better to restrict the data for now.
 
 ```{r message=FALSE}
 AbidjanData2<-AbidjanData[AbidjanData$dt>as.Date("1900-01-01"),]
@@ -59,42 +63,39 @@ sum(is.na(AbidjanData2$AverageTemperature))
 
 Only 1. As it turns out, the last piece of data is missing.
 
-Let's plot again.
+I will now plot again.
 
 ```{r message=FALSE}
 ggplot(AbidjanData2, aes(dt,AverageTemperature))+geom_point(aes(color=AverageTemperature))+xlab("year")+ylab("Temperature in Celcius")
 ```
 
-Great. Let's move on to the analysis.
-
-Let's fit an ARIMA model. I will now follow along with datascience.com/blog/introduction-to-forecasting-with-arima-in-r-learn-data-science-tutorials. They want to use the ggplot, forecast and tseries libraries, and we've already loaded ggplot.
+I will now move on to the analysis by fitting an ARIMA model. I will now follow along with datascience.com/blog/introduction-to-forecasting-with-arima-in-r-learn-data-science-tutorials. They want to use the ggplot, forecast and tseries libraries, and we've already loaded ggplot.
 
 ```{r}
 library('forecast')
 library('tseries')
 ```
 
-As they suggest, I will make sure that the data is cleaned. They use count_ts=ts(AbidjanData2[, c('AverageTemperature')]), but I prefer different notation:
+I will start by make sure that the data is cleaned. They use count_ts=ts(AbidjanData2[, c('AverageTemperature')]), but I prefer different notation:
 
 ```{r message=FALSE}
 temp_ts=ts(AbidjanData2$AverageTemperature)
 ```
 
-They then create a cleaned column:
+Now I will create a cleaned column:
 
 ```{r message=FALSE}
 AbidjanData2$cleaned_AverageTemperature= tsclean(temp_ts)
 ```
 
-
-They next look at a moving average, which is what I want to look at too. R has a command: ma, which creates the moving average for us.
+Before fitting the ARIMA model, I will first examing the moving average. R has a command: ma, which creates the moving average.
 
 ```{r message=FALSE}
 AbidjanData2$temp_ma=ma(AbidjanData2$cleaned_AverageTemperature,order=12) 
 AbidjanData2$temp_ma_decade=ma(AbidjanData2$cleaned_AverageTemperature,order=120) 
 ```
 
-Using an order 12 for the 12 months of the year. This will give our annual average. Using an order 120 for 10 years. This will give our Decennial average.
+I am using an order 12 for the 12 months of the year. This will give our annual average. Using an order 120 for 10 years. This will give the Decennial average.
 
 ```{r message=FALSE, warning=FALSE}
 ggplot()+
@@ -103,7 +104,7 @@ ggplot()+
   geom_line(data=AbidjanData2, aes(x=dt, y= temp_ma_decade, colour="Decennial Moving Average"))+xlab("year")+ylab("Temperature in Celcius")
 ```
 
-We will now calculate the seasonal component:
+I will now calculate the seasonal component:
 ```{r message=FALSE}
 temp_ma=ts(na.omit(AbidjanData2$cleaned_AverageTemperature),frequency=12)
 decomp=stl(temp_ma,s.window="periodic")
@@ -112,31 +113,33 @@ plot(decomp)
 ```
 
 
-In our case, we have 12 observations per period, since a year is a period and we only have 1 data point per month.
+In this case, we have 12 observations per period, since a year is a period and we only have 1 data point per month.
 
-They recommend checking for stationarity. To do this we will use the augmented Dickey-Fuller (ADF) test. Since temperatures depend largely on the month, and we've adjusted by using the mean temperature over the year, we shouldn't see any seasonality, this data shoud now be stationary.
+I will now check for stationarity. To do this I will use the augmented Dickey-Fuller (ADF) test. Since temperatures depend largely on the month, and we've adjusted by using the mean temperature over the year, we shouldn't see any seasonality, this data shoud now be stationary.
 
 ```{r}
 adf.test(temp_ma, alternative= "stationary")
 ```
 
-The p-value of .01 indicates that we should assume that we reject the null hypothesis of non-stationarity. So that's good, we don't have to use differencing. If we were concerned with these, we would want to examine the AcF and Pacf for any peaks, but we already have stationary data.
+The p-value of .01 indicates that we should assume that we reject the null hypothesis of non-stationarity. So I don't have to use differencing on the data. If we were concerned with these, we would want to examine the AcF and Pacf for any peaks, but we already have stationary data.
 
 ```{r}
 Acf(temp_ma, main='')
 Pacf(temp_ma,main='')
 ```
 
-Let's try using auto.arima:
+So, now I will use auto.arima:
 
 ```{r}
 myarima=auto.arima(deseasonal_temp,seasonal=FALSE)
 summary(myarima)
 ```
 
-and now let's plot it
+and now plot it
 
 ```{r}
 q=forecast(myarima,h=120)
 plot(q)
 ```
+
+This plot shows the cleaned data and the ARIMA model's prediction. The temperature is expected to rise over the next 10 years.
