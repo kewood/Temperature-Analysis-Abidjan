@@ -143,7 +143,6 @@ kpss.test(deseasonal_temp)
 ```
 kpss thinks that it is non-stationary.
 
-I think I should have to use a difference based on the ACF though. The partial ACF indicates a first order difference of 1. 
 
 
 So, now I will use auto.arima:
@@ -153,7 +152,6 @@ myarima=auto.arima(deseasonal_temp,seasonal=FALSE)
 summary(myarima)
 ```
 
-AutoArima thinks that there should be a first order difference of 1 as well.
 
 We will now plot the prediction.
 
